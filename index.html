@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Overlap — Schedule</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'sans-serif'],
+          mono: ['DM Mono', 'monospace'],
+        },
+        colors: {
+          zinc: {
+            750: '#2d2d35',
+            850: '#1f1f24',
+            950: '#09090b',
+          }
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  /* Base & Scrollbars */
+  body { background-color: #09090b; color: #f4f4f5; font-family: 'Inter', sans-serif; overflow: hidden; }
+  
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+  /* Grid specific hover effects */
+  td.td-cell { transition: all 0.15s ease; }
+  td.td-cell:hover { background-color: #1f1f24; outline: 2px solid #6366f1; outline-offset: -2px; z-index: 10; }
+  
+  /* Loading Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .exp-spinner {
+    border-top-color: #6366f1;
+    animation: spin .8s linear infinite;
+  }
+
+  /* Sticky overrides for mobile grid */
+  .sticky-col { position: sticky; left: 0; z-index: 20; box-shadow: 2px 0 5px rgba(0,0,0,0.2); }
+</style>
+</head>
+<body class="flex flex-col h-screen w-screen text-zinc-100 antialiased selection:bg-indigo-500/30">
+
+<div id="app" class="flex flex-col h-full w-full">
+  
+  <!-- Top Navigation Bar -->
+  <header class="h-[52px] min-h-[52px] flex items-center justify-between px-3 md:px-5 bg-zinc-900 border-b border-zinc-800 shrink-0 z-30">
+    <div class="flex items-center gap-3">
+      <button onclick="togglePanel()" class="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors border border-transparent hover:border-zinc-700" title="Manage people">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <span class="font-mono text-lg font-medium tracking-tight">over<em class="text-indigo-400 not-italic">lap</em></span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button onclick="document.getElementById('jsonFile').click()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all" title="Import JSON">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import
+      </button>
+      <input type="file" id="jsonFile" accept=".json" class="hidden" onchange="importJSON(event)">
+      
+      <button onclick="exportJSON()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all" title="Export as JSON">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        JSON
+      </button>
+
+      <button onclick="exportPNG()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-all border border-indigo-500">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span class="hidden sm:inline">Export 16:9</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Grid Area -->
+  <main class="flex-1 overflow-hidden relative bg-zinc-950">
+    <div class="h-full w-full overflow-auto">
+      <table id="grid" class="w-full min-w-[540px] sm:min-w-[800px] table-fixed border-collapse">
+        <thead id="gridHead" class="sticky top-0 z-30 bg-zinc-900 border-b border-zinc-800 shadow-sm"></thead>
+        <tbody id="gridBody"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- Overlay backdrop -->
+<div id="panelOverlay" onclick="closePanel()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+
+<!-- Sidebar Management Panel -->
+<div id="panel" class="fixed top-0 left-0 w-[85vw] max-w-[320px] h-full bg-zinc-900 border-r border-zinc-800 z-50 flex flex-col transform -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl">
+  <div class="flex items-center justify-between p-4 border-b border-zinc-800 shrink-0">
+    <h2 class="text-sm font-semibold tracking-wide text-zinc-100">Manage People</h2>
+    <button onclick="closePanel()" class="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  
+  <div class="flex-1 overflow-y-auto p-4">
+    <div class="text-[10px] font-bold tracking-widest uppercase text-zinc-500 mb-3">Add Person</div>
+    <div class="flex flex-col gap-3 mb-8">
+      <div class="flex items-center gap-2">
+        <input type="text" id="newName" placeholder="Enter name..." maxlength="28" onkeydown="if(event.key==='Enter')addPerson()" class="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+        <input type="color" id="newColor" value="#818cf8" class="w-10 h-10 rounded-lg cursor-pointer bg-zinc-950 border border-zinc-700 p-0.5 shrink-0">
+      </div>
+      <button onclick="addPerson()" class="w-full py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-sm font-medium border border-zinc-700 transition-colors">
+        + Add to Roster
+      </button>
+    </div>
+
+    <div class="text-[10px] font-bold tracking-widest uppercase text-zinc-500 mb-3">Roster</div>
+    <div id="peopleList" class="flex flex-col gap-1.5">
+      <!-- Populated via JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Hover Tooltip -->
+<div id="tip" class="fixed z-[100] bg-zinc-800/95 backdrop-blur-md border border-zinc-700 rounded-xl p-3 shadow-xl max-w-[240px] pointer-events-none opacity-0 transition-opacity duration-150 scale-95 transform hidden">
+</div>
+
+<!-- Selection Modal -->
+<div id="modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+  <div class="bg-zinc-900 border border-zinc-700 rounded-xl p-5 w-full max-w-[340px] shadow-2xl animate-[fadeIn_0.2s_ease-out]">
+    <h2 id="mTitle" class="text-lg font-semibold text-white"></h2>
+    <div id="mSub" class="text-xs text-indigo-400 font-mono mb-4 mt-1"></div>
+    
+    <div id="mList" class="max-h-[300px] overflow-y-auto flex flex-col gap-1 mb-5 pr-1">
+      <!-- Populated via JS -->
+    </div>
+    
+    <div class="flex gap-3 justify-end pt-3 border-t border-zinc-800">
+      <button onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">Cancel</button>
+      <button onclick="saveModal()" class="px-5 py-2 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-colors">Save Slots</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export Status Overlay -->
+<div id="exportStatus" class="fixed inset-0 z-[200] bg-zinc-950/90 backdrop-blur-sm hidden items-center justify-center flex-col gap-4">
+  <div class="exp-spinner w-10 h-10 border-4 border-zinc-800 rounded-full"></div>
+  <span class="text-sm font-medium text-zinc-300 animate-pulse">Rendering 16:9 Image...</span>
+</div>
+
+<!-- Hidden Canvas for Exporting -->
+<div id="exportCanvas" class="fixed -left-[9999px] top-0 pointer-events-none"></div>
+
+<script>
+// ── Core Configuration ─────────────────────────────────────────────
+const DAYS   = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday'];
+const DSHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Sat'];
+const SLOTS  = [
+  {id:0, start:'8:00 AM', end:'9:20 AM'},
+  {id:1, start:'9:30 AM', end:'10:50 AM'},
+  {id:2, start:'11:00 AM', end:'12:20 PM'},
+  {id:3, start:'12:30 PM', end:'1:50 PM'},
+  {id:4, start:'2:00 PM', end:'3:20 PM'},
+  {id:5, start:'3:30 PM', end:'4:50 PM'}
+];
+
+// Refined, accessible pastel palette for dark mode
+const PALETTE = ['#818cf8', '#fb923c', '#4ade80', '#f472b6', '#2dd4bf', '#facc15', '#c084fc', '#fb7185', '#22d3ee', '#a3e635'];
+
+let people   = []; // {id, name, color, active}
+let schedule = {}; // Format: "dayIndex-slotIndex": [personId, ...]
+let nextId   = 1;
+let palIdx   = 0;
+let modalTarget = null;
+
+// ── Boot Sequence ──────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadState();
+  renderAll();
+});
+
+// ── State Management (Auto-load JSON) ───────────────────────────────
+async function loadState() {
+  let loadedFromServer = false;
+
+  // 1. Attempt to fetch from same folder (For GitHub Pages deployment)
+  try {
+    const res = await fetch('./overlap-schedule.json', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      applyData(data);
+      loadedFromServer = true;
+      console.log("Loaded schedule from server JSON.");
+    }
+  } catch (err) {
+    console.log("No server JSON found, checking local storage...");
+  }
+
+  // 2. Fallback to localStorage if fetch fails
+  if (!loadedFromServer) {
+    try {
+      const raw = localStorage.getItem('overlap_v2');
+      if (raw) applyData(JSON.parse(raw));
+    } catch (e) { console.error("Error loading local storage", e); }
+  }
+
+  // Set initial color picker value
+  document.getElementById('newColor').value = PALETTE[palIdx % PALETTE.length];
+}
+
+function applyData(s) {
+  people   = s.people   || [];
+  schedule = s.schedule || {};
+  nextId   = s.nextId   || 1;
+  palIdx   = s.palIdx   || 0;
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('overlap_v2', JSON.stringify({people, schedule, nextId, palIdx}));
+  } catch(e) { console.error("Could not save to local storage", e); }
+}
+
+// ── Rendering Engine ────────────────────────────────────────────────
+function renderAll() {
+  renderGrid();
+  renderPeople();
+  saveState();
+}
+
+function renderGrid() {
+  const head = document.getElementById('gridHead');
+  const body = document.getElementById('gridBody');
+  const vis  = visiblePeople();
+
+  // Render Header
+  head.innerHTML = `<tr>
+    <th class="sticky-col bg-zinc-900 border-r border-zinc-800 p-2 text-center w-[90px] min-w-[90px] sm:w-[120px] sm:min-w-[120px] font-mono text-[10px] sm:text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+      Time
+    </th>
+    ${DSHORT.map((d,i) => `<th class="border-l border-zinc-800 p-2 sm:p-3 text-center text-[11px] sm:text-xs font-semibold text-zinc-400 uppercase tracking-wider" title="${DAYS[i]}">${d}</th>`).join('')}
+  </tr>`;
+
+  // Render Body
+  body.innerHTML = SLOTS.map((slot, si) => `
+    <tr class="border-b border-zinc-800 last:border-b-0">
+      <td class="sticky-col bg-zinc-900 border-r border-zinc-800 p-2 align-middle select-none">
+        <div class="flex flex-col items-center justify-center font-mono text-[11px] sm:text-xs text-zinc-200 font-medium leading-tight py-1">
+          <span>${slot.start}</span>
+          <span class="text-zinc-500 my-0.5">–</span>
+          <span>${slot.end}</span>
+        </div>
+      </td>
+      ${DAYS.map((_, di) => {
+        const key = `${di}-${si}`;
+        const occ = (schedule[key] || []).filter(id => vis.has(id));
+        
+        const chips = occ.map(id => {
+          const p = people.find(x => x.id === id);
+          if(!p) return '';
+          return `<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap shadow-sm" style="background:${p.color}25; color:${p.color}; border: 1px solid ${p.color}40;">
+            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${p.color}"></span>
+            <span class="truncate max-w-[80px] sm:max-w-none">${p.name}</span>
+          </span>`;
+        }).join('');
+        
+        return `<td class="td-cell bg-zinc-950 border-l border-zinc-800 p-2 align-top min-h-[60px] cursor-pointer relative" data-di="${di}" data-si="${si}">
+          <div class="flex flex-wrap gap-1.5 content-start">${chips}</div>
+        </td>`;
+      }).join('')}
+    </tr>
+  `).join('');
+
+  // Re-bind Interaction Events
+  document.querySelectorAll('td.td-cell').forEach(td => {
+    const di = +td.dataset.di, si = +td.dataset.si;
+    td.addEventListener('click', () => openModal(di, si));
+    td.addEventListener('mouseenter', e => showTip(e, di, si));
+    td.addEventListener('mousemove', e => moveTip(e));
+    td.addEventListener('mouseleave', hideTip);
+  });
+}
+
+function renderPeople() {
+  const el = document.getElementById('peopleList');
+  if (!people.length) { 
+    el.innerHTML = '<p class="text-xs text-zinc-500 italic px-1">No people added yet.</p>'; 
+    return; 
+  }
+  
+  el.innerHTML = people.map(p => `
+    <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50 transition-colors group">
+      <button onclick="togglePerson('${p.id}')" class="w-5 h-5 rounded flex items-center justify-center border transition-all ${p.active ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-transparent border-zinc-600 text-transparent'}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </button>
+      <div class="w-3 h-3 rounded-full shrink-0 shadow-sm" style="background:${p.color}"></div>
+      <span class="flex-1 text-sm text-zinc-200 truncate font-medium" title="${p.name}">${p.name}</span>
+      <button onclick="removePerson('${p.id}')" class="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-red-400 transition-all rounded">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  `).join('');
+}
+
+// ── Panel Management ────────────────────────────────────────────────
+function togglePanel() {
+  const panel = document.getElementById('panel');
+  const overlay = document.getElementById('panelOverlay');
+  const isOpen = !panel.classList.contains('-translate-x-full');
+  
+  if (isOpen) { closePanel(); } 
+  else {
+    panel.classList.remove('-translate-x-full');
+    overlay.classList.remove('opacity-0', 'pointer-events-none');
+  }
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.add('-translate-x-full');
+  document.getElementById('panelOverlay').classList.add('opacity-0', 'pointer-events-none');
+}
+
+// ── Person Operations ───────────────────────────────────────────────
+function addPerson() {
+  const nameEl  = document.getElementById('newName');
+  const colorEl = document.getElementById('newColor');
+  const name = nameEl.value.trim();
+  
+  if (!name) { nameEl.focus(); return; }
+  
+  people.push({id:`p${nextId++}`, name, color:colorEl.value, active:true});
+  nameEl.value = '';
+  colorEl.value = PALETTE[palIdx++ % PALETTE.length];
+  renderAll();
+}
+
+function removePerson(id) {
+  if(!confirm("Remove this person?")) return;
+  people = people.filter(p => p.id !== id);
+  Object.keys(schedule).forEach(k => {
+    schedule[k] = schedule[k].filter(x => x !== id);
+    if(!schedule[k].length) delete schedule[k];
+  });
+  renderAll();
+}
+
+function togglePerson(id) {
+  const p = people.find(x => x.id === id);
+  if(p) p.active = !p.active;
+  renderAll();
+}
+
+// ── Modal Handling ──────────────────────────────────────────────────
+function openModal(di, si) {
+  hideTip();
+  modalTarget = {di, si};
+  const key = `${di}-${si}`;
+  const asgn = schedule[key] || [];
+  
+  document.getElementById('mTitle').textContent = DAYS[di];
+  document.getElementById('mSub').textContent = `${SLOTS[si].start} – ${SLOTS[si].end}`;
+  
+  const list = document.getElementById('mList');
+  if (!people.length) {
+    list.innerHTML = '<p class="text-sm text-zinc-500 italic p-2">Add people in the management panel first.</p>';
+  } else {
+    list.innerHTML = people.map(p => `
+      <label class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-zinc-800/60 cursor-pointer transition-colors group">
+        <input type="checkbox" id="mc_${p.id}" class="w-4 h-4 rounded border-zinc-600 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-zinc-900 bg-zinc-900 cursor-pointer" ${asgn.includes(p.id) ? 'checked' : ''}>
+        <div class="w-3 h-3 rounded-full shrink-0" style="background:${p.color}"></div>
+        <span class="text-sm text-zinc-200 group-hover:text-white select-none flex-1">${p.name}</span>
+      </label>
+    `).join('');
+  }
+  
+  const modal = document.getElementById('modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+function closeModal() {
+  const modal = document.getElementById('modal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  modalTarget = null;
+}
+
+function saveModal() {
+  if(!modalTarget) return;
+  const {di, si} = modalTarget;
+  const key = `${di}-${si}`;
+  const checked = [...document.querySelectorAll('#mList input[type="checkbox"]:checked')].map(el => el.id.replace('mc_',''));
+  
+  if(checked.length) schedule[key] = checked;
+  else delete schedule[key];
+  
+  closeModal();
+  renderAll();
+}
+
+function visiblePeople() {
+  return new Set(people.filter(p => p.active).map(p => p.id));
+}
+
+// Close modal on outside click
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+// ── Tooltip Engine ──────────────────────────────────────────────────
+function showTip(e, di, si) {
+  // Disable tooltip on touch devices for better UX
+  if(window.matchMedia("(pointer: coarse)").matches) return; 
+
+  const key = `${di}-${si}`;
+  const vis = people.filter(p => p.active);
+  const visIds = new Set(vis.map(p => p.id));
+  
+  const occ = (schedule[key] || []).filter(id => visIds.has(id));
+  const free = vis.filter(p => !occ.includes(p.id));
+  
+  const renderItem = p => `<div class="flex items-center gap-2 py-0.5"><div class="w-2 h-2 rounded-full shadow-sm shrink-0" style="background:${p.color}"></div><span class="text-xs text-zinc-200 truncate">${p.name}</span></div>`;
+  const tip = document.getElementById('tip');
+  
+  tip.innerHTML = `
+    <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-700 pb-2 mb-2">${DSHORT[di]} · ${SLOTS[si].start} – ${SLOTS[si].end}</div>
+    <div class="mb-3">
+      <div class="text-[10px] font-bold text-red-400 uppercase mb-1 flex items-center gap-1">🔴 Occupied</div>
+      <div class="flex flex-col gap-0.5">${occ.length ? occ.map(id => renderItem(people.find(x => x.id === id))).join('') : '<span class="text-xs text-zinc-500 italic">Nobody</span>'}</div>
+    </div>
+    <div>
+      <div class="text-[10px] font-bold text-green-400 uppercase mb-1 flex items-center gap-1">🟢 Available</div>
+      <div class="flex flex-col gap-0.5">${free.length ? free.map(renderItem).join('') : '<span class="text-xs text-zinc-500 italic">Nobody</span>'}</div>
+    </div>`;
+  
+  moveTip(e);
+  tip.classList.remove('hidden', 'opacity-0', 'scale-95');
+}
+
+function moveTip(e) {
+  const t = document.getElementById('tip');
+  const m = 16; // margin
+  let x = e.clientX + m, y = e.clientY + m;
+  
+  // Viewport bounds checking
+  if (x + 240 > window.innerWidth) x = e.clientX - 240 - m;
+  if (y + t.offsetHeight > window.innerHeight) y = e.clientY - t.offsetHeight - m;
+  
+  t.style.left = `${x}px`; 
+  t.style.top = `${y}px`;
+}
+
+function hideTip() { 
+  document.getElementById('tip').classList.add('opacity-0', 'scale-95');
+  setTimeout(() => document.getElementById('tip').classList.add('hidden'), 150);
+}
+
+// ── Data Export / Import ─────────────────────────────────────────────
+function exportJSON() {
+  const data = JSON.stringify({people, schedule, nextId, palIdx}, null, 2);
+  const blob = new Blob([data], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'overlap-schedule.json';
+  a.click();
+}
+
+function importJSON(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      applyData(JSON.parse(ev.target.result));
+      document.getElementById('newColor').value = PALETTE[palIdx % PALETTE.length];
+      renderAll();
+    } catch(err) { alert('Invalid JSON file.'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── High-Fidelity 16:9 Image Export Engine ───────────────────────────
+async function exportPNG() {
+  hideTip();
+  closePanel();
+  const statusEl = document.getElementById('exportStatus');
+  statusEl.classList.remove('hidden');
+  statusEl.classList.add('flex');
+
+  // Let UI settle
+  await new Promise(r => setTimeout(r, 200));
+
+  const EW = 1920, EH = 1080;
+  // Calculate strict grid dimensions to fit inside 16:9 box nicely
+  const timeW = 120; 
+  const headerH = 60;
+  const colW = Math.floor((EW - timeW) / 6); 
+  const rowH = Math.floor((EH - headerH) / 6);
+
+  const ec = document.getElementById('exportCanvas');
+  
+  // Style the wrapper to guarantee rendering bounds
+  ec.style.cssText = `
+    position: fixed; left: -9999px; top: 0;
+    width: ${EW}px; height: ${EH}px;
+    background-color: #09090b; 
+    font-family: 'Inter', sans-serif;
+  `;
+
+  let rows = '';
+  for(let si=0; si<6; si++) {
+    // Time Slot cell (with dynamic stacked look matching standard style)
+    let cells = `<td style="width:${timeW}px; height:${rowH}px; background:#18181b; border:1px solid #27272a; padding:0 12px; vertical-align:middle; text-align:center; box-sizing:border-box;">
+      <div style="font-family:'DM Mono',monospace; font-size:15px; color:#f4f4f5; font-weight:500; line-height:1.4;">
+        <div>${SLOTS[si].start}</div>
+        <div style="color:#71717a; margin:2px 0;">–</div>
+        <div>${SLOTS[si].end}</div>
+      </div>
+    </td>`;
+
+    // Day Cells
+    for(let di=0; di<6; di++) {
+      const key = `${di}-${si}`;
+      const occ = (schedule[key] || []).filter(id => visiblePeople().has(id));
+      
+      const badges = occ.map(id => {
+        const p = people.find(x => x.id === id);
+        if(!p) return '';
+        return `<span style="display:inline-flex; align-items:center; gap:8px; padding:6px 14px; border-radius:8px; font-size:16px; font-weight:600; white-space:nowrap; background:${p.color}25; color:${p.color}; border:1px solid ${p.color}40; margin:4px;">
+          <span style="width:10px; height:10px; border-radius:50%; background:${p.color}; display:inline-block; flex-shrink:0;"></span>
+          ${p.name}
+        </span>`;
+      }).join('');
+      
+      cells += `<td style="width:${colW}px; height:${rowH}px; background:#09090b; border:1px solid #27272a; vertical-align:top; padding:12px; box-sizing:border-box;">
+        <div style="display:flex; flex-wrap:wrap; align-content:flex-start;">${badges}</div>
+      </td>`;
+    }
+    rows += `<tr>${cells}</tr>`;
+  }
+
+  // Header Row
+  const headCells = `<th style="width:${timeW}px; height:${headerH}px; background:#18181b; border:1px solid #27272a; padding:0 24px; font-size:14px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#71717a; text-align:center; font-family:'DM Mono',monospace; box-sizing:border-box;">Time</th>`
+    + DAYS.map(d => `<th style="width:${colW}px; height:${headerH}px; background:#18181b; border:1px solid #27272a; font-size:16px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#71717a; text-align:center; box-sizing:border-box;">${d}</th>`).join('');
+
+  ec.innerHTML = `
+    <table style="border-collapse:collapse; width:${EW}px; height:${EH}px; table-layout:fixed;">
+      <thead><tr>${headCells}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+  try {
+    const canvas = await html2canvas(ec, {
+      width: EW, height: EH,
+      scale: 1, // 1:1 pixel mapping for 1080p
+      useCORS: true,
+      backgroundColor: '#09090b',
+      logging: false,
+      onclone: (doc) => {
+        // Ensure webfonts are loaded in clone
+        doc.fonts.ready.then(() => {}); 
+      }
+    });
+    
+    const link = document.createElement('a');
+    link.download = 'overlap-schedule-16x9.png';
+    link.href = canvas.toDataURL('image/png', 1.0);
+    link.click();
+  } catch(err) {
+    alert('Export failed. Please try again.');
+    console.error(err);
+  } finally {
+    ec.innerHTML = '';
+    statusEl.classList.add('hidden');
+    statusEl.classList.remove('flex');
+  }
+}
+</script>
+</body>
+</html>
