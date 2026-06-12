@@ -1,7 +1,3 @@
-Here is a clean, professional `README.md` file tailored for your **Overlap** scheduler. You can copy and paste this directly into your GitHub repository.
-
----
-
 # Overlap
 
 **Overlap** is a lightweight, mobile-first scheduling web application designed to help teams or groups visualize overlapping availability across a defined set of daily time slots.
