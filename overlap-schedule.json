@@ -10,25 +10,25 @@
       "id": "p3",
       "name": "Dora",
       "color": "#ff00dd",
-      "active": false
+      "active": true
     },
     {
       "id": "p4",
       "name": "Sabir",
       "color": "#ffffff",
-      "active": false
+      "active": true
     },
     {
       "id": "p5",
       "name": "Adib",
       "color": "#ff0000",
-      "active": false
+      "active": true
     },
     {
       "id": "p6",
       "name": "Numaer",
       "color": "#4ade80",
-      "active": false
+      "active": true
     },
     {
       "id": "p7",
