@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Overlap — Schedule</title>
+<title>Ridac — Schedule</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -17,11 +17,7 @@
           mono: ['DM Mono', 'monospace'],
         },
         colors: {
-          zinc: {
-            750: '#2d2d35',
-            850: '#1f1f24',
-            950: '#09090b',
-          }
+          zinc: { 750: '#2d2d35', 850: '#1f1f24', 950: '#09090b' }
         }
       }
     }
@@ -29,42 +25,69 @@
 </script>
 
 <style>
-  /* Base & Scrollbars */
   body { background-color: #09090b; color: #f4f4f5; font-family: 'Inter', sans-serif; overflow: hidden; }
-  
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: #52525b; }
-
-  /* Grid specific hover effects */
   td.td-cell { transition: all 0.15s ease; }
   td.td-cell:hover { background-color: #1f1f24; outline: 2px solid #6366f1; outline-offset: -2px; z-index: 10; }
-  
-  /* Loading Spinner */
   @keyframes spin { to { transform: rotate(360deg); } }
-  .exp-spinner {
-    border-top-color: #6366f1;
-    animation: spin .8s linear infinite;
+  .exp-spinner { border-top-color: #6366f1; animation: spin .8s linear infinite; }
+  .sticky-col { position: sticky; left: 0; z-index: 20; box-shadow: 2px 0 5px rgba(0,0,0,0.2); }
+
+  /* Vertical-first name layout: each name takes full column width by default */
+  .name-chips-container { display: flex; flex-direction: column; gap: 4px; }
+  /* On desktop, names stack vertically first. When a row wraps, it wraps horizontally. */
+  @media (min-width: 768px) {
+    .name-chips-container { flex-direction: column; flex-wrap: nowrap; }
+    .name-chip { width: 100%; }
   }
 
-  /* Sticky overrides for mobile grid */
-  .sticky-col { position: sticky; left: 0; z-index: 20; box-shadow: 2px 0 5px rgba(0,0,0,0.2); }
+  /* Roster dropdown styling */
+  #rosterDropdown {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 28px !important;
+  }
+  #rosterDropdown option { background: #18181b; color: #f4f4f5; }
+
+  /* Animate fadeIn for modals */
+  @keyframes fadeIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
 </style>
 </head>
 <body class="flex flex-col h-screen w-screen text-zinc-100 antialiased selection:bg-indigo-500/30">
 
 <div id="app" class="flex flex-col h-full w-full">
-  
+
   <!-- Top Navigation Bar -->
   <header class="h-[52px] min-h-[52px] flex items-center justify-between px-3 md:px-5 bg-zinc-900 border-b border-zinc-800 shrink-0 z-30">
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2 md:gap-3">
       <button onclick="togglePanel()" class="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors border border-transparent hover:border-zinc-700" title="Manage people">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
         </svg>
       </button>
-      <span class="font-mono text-lg font-medium tracking-tight">over<em class="text-indigo-400 not-italic">lap</em></span>
+      <span class="font-mono text-lg font-medium tracking-tight">Rid<em class="text-indigo-400 not-italic">ac</em></span>
+
+      <!-- Roster Switcher Dropdown -->
+      <div class="flex items-center gap-1.5 ml-1">
+        <select id="rosterDropdown" onchange="switchRoster(this.value)" class="h-8 px-2 pr-7 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-200 font-medium cursor-pointer focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all max-w-[140px] truncate">
+          <!-- Populated via JS -->
+        </select>
+        <button onclick="openRosterModal('new')" class="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors border border-zinc-700" title="New roster">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button onclick="openRosterModal('rename')" class="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors border border-zinc-700" title="Rename roster">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/></svg>
+        </button>
+        <button onclick="deleteCurrentRoster()" class="p-1.5 rounded-md text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors border border-zinc-700" title="Delete roster">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </div>
     </div>
 
     <div class="flex items-center gap-2">
@@ -79,9 +102,14 @@
         JSON
       </button>
 
+      <button id="importRoutinesBtn" onclick="openImportRoutinesModal()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all" title="Import routines from Default roster">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="21" x2="12" y2="3"/><polyline points="20 7 12 3 4 7"/></svg>
+        Routines
+      </button>
+
       <button onclick="exportPNG()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-all border border-indigo-500">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        <span class="hidden sm:inline">Export 16:9</span>
+        <span class="hidden sm:inline">Export PNG</span>
       </button>
     </div>
   </header>
@@ -89,7 +117,7 @@
   <!-- Main Grid Area -->
   <main class="flex-1 overflow-hidden relative bg-zinc-950">
     <div class="h-full w-full overflow-auto">
-      <table id="grid" class="w-full min-w-[540px] sm:min-w-[800px] table-fixed border-collapse">
+      <table id="grid" class="w-full h-full min-w-[540px] sm:min-w-[800px] min-h-[500px] table-fixed border-collapse">
         <thead id="gridHead" class="sticky top-0 z-30 bg-zinc-900 border-b border-zinc-800 shadow-sm"></thead>
         <tbody id="gridBody"></tbody>
       </table>
@@ -110,17 +138,30 @@
   </div>
   
   <div class="flex-1 overflow-y-auto p-4">
+    <!-- Add Person -->
     <div class="text-[10px] font-bold tracking-widest uppercase text-zinc-500 mb-3">Add Person</div>
-    <div class="flex flex-col gap-3 mb-8">
+    <div class="flex flex-col gap-3 mb-6">
+      <input type="text" id="newName" placeholder="Enter name..." maxlength="28" onkeydown="if(event.key==='Enter')addPerson()" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
       <div class="flex items-center gap-2">
-        <input type="text" id="newName" placeholder="Enter name..." maxlength="28" onkeydown="if(event.key==='Enter')addPerson()" class="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
-        <input type="color" id="newColor" value="#818cf8" class="w-10 h-10 rounded-lg cursor-pointer bg-zinc-950 border border-zinc-700 p-0.5 shrink-0">
+        <input type="color" id="newColor" value="#818cf8" class="w-10 h-10 rounded-lg cursor-pointer bg-zinc-950 border border-zinc-700 p-0.5 shrink-0" title="Choose color">
+        <button onclick="autoAssignNewColor()" class="flex-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 transition-colors text-xs font-semibold" title="Auto-assign unique color">
+          Auto Color
+        </button>
+        <button onclick="addPerson()" class="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold border border-indigo-500 transition-colors">
+          + Add
+        </button>
       </div>
-      <button onclick="addPerson()" class="w-full py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-sm font-medium border border-zinc-700 transition-colors">
-        + Add to Roster
-      </button>
     </div>
 
+    <!-- Search -->
+    <div class="mb-4">
+      <div class="relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchPeople" placeholder="Search roster..." oninput="renderPeople()" class="w-full pl-8 pr-3 py-2 bg-zinc-950 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+      </div>
+    </div>
+
+    <!-- Roster Label -->
     <div class="text-[10px] font-bold tracking-widest uppercase text-zinc-500 mb-3">Roster</div>
     <div id="peopleList" class="flex flex-col gap-1.5">
       <!-- Populated via JS -->
@@ -132,16 +173,14 @@
 <div id="tip" class="fixed z-[100] bg-zinc-800/95 backdrop-blur-md border border-zinc-700 rounded-xl p-3 shadow-xl max-w-[240px] pointer-events-none opacity-0 transition-opacity duration-150 scale-95 transform hidden">
 </div>
 
-<!-- Selection Modal -->
+<!-- Slot Assignment Modal -->
 <div id="modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
-  <div class="bg-zinc-900 border border-zinc-700 rounded-xl p-5 w-full max-w-[340px] shadow-2xl animate-[fadeIn_0.2s_ease-out]">
+  <div class="bg-zinc-900 border border-zinc-700 rounded-xl p-5 w-full max-w-[340px] shadow-2xl" style="animation:fadeIn 0.2s ease-out">
     <h2 id="mTitle" class="text-lg font-semibold text-white"></h2>
     <div id="mSub" class="text-xs text-indigo-400 font-mono mb-4 mt-1"></div>
-    
     <div id="mList" class="max-h-[300px] overflow-y-auto flex flex-col gap-1 mb-5 pr-1">
       <!-- Populated via JS -->
     </div>
-    
     <div class="flex gap-3 justify-end pt-3 border-t border-zinc-800">
       <button onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">Cancel</button>
       <button onclick="saveModal()" class="px-5 py-2 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-colors">Save Slots</button>
@@ -149,10 +188,73 @@
   </div>
 </div>
 
+<!-- Edit Person Modal -->
+<div id="editModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+  <div class="bg-zinc-900 border border-zinc-700 rounded-xl p-5 w-full max-w-[340px] shadow-2xl" style="animation:fadeIn 0.2s ease-out">
+    <h2 class="text-lg font-semibold text-white">Edit Person</h2>
+    <div class="flex flex-col gap-4 my-4">
+      <div>
+        <label class="text-[10px] font-bold tracking-widest uppercase text-zinc-500 block mb-1">Name</label>
+        <input type="text" id="editName" placeholder="Enter name..." maxlength="28" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+      </div>
+      <div>
+        <label class="text-[10px] font-bold tracking-widest uppercase text-zinc-500 block mb-1">Color</label>
+        <div class="flex items-center gap-2">
+          <input type="color" id="editColor" class="w-10 h-10 rounded-lg cursor-pointer bg-zinc-950 border border-zinc-700 p-0.5 shrink-0" title="Choose color">
+          <button onclick="autoAssignEditColor()" class="flex-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-semibold border border-zinc-700 transition-colors" title="Auto-assign unique color">
+            Auto-assign Unique
+          </button>
+        </div>
+      </div>
+      <div>
+        <label class="text-[10px] font-bold tracking-widest uppercase text-zinc-500 block mb-2">Also in Rosters</label>
+        <div id="editRosterList" class="flex flex-col gap-1 max-h-[120px] overflow-y-auto">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-3 justify-end pt-3 border-t border-zinc-800">
+      <button onclick="closeEditModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">Cancel</button>
+      <button onclick="saveEditModal()" class="px-5 py-2 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-colors">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Roster Name Modal -->
+<div id="rosterModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+  <div class="bg-zinc-900 border border-zinc-700 rounded-xl p-5 w-full max-w-[300px] shadow-2xl" style="animation:fadeIn 0.2s ease-out">
+    <h2 id="rosterModalTitle" class="text-lg font-semibold text-white mb-1">New Roster</h2>
+    <p id="rosterModalHint" class="text-xs text-zinc-500 mb-4">Starts as a blank calendar. You can import routines after.</p>
+    <input type="text" id="rosterNameInput" placeholder="Roster name..." maxlength="32" onkeydown="if(event.key==='Enter')saveRosterModal()" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all mb-4">
+    <div class="flex gap-3 justify-end">
+      <button onclick="closeRosterModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">Cancel</button>
+      <button onclick="saveRosterModal()" class="px-5 py-2 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-colors">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import Routines Modal -->
+<div id="importRoutinesModal" class="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+  <div class="bg-zinc-900 border border-zinc-700 rounded-xl p-5 w-full max-w-[360px] shadow-2xl flex flex-col" style="animation:fadeIn 0.2s ease-out;max-height:90vh;">
+    <h2 class="text-base font-semibold text-white mb-1">Import Routines</h2>
+    <p class="text-xs text-zinc-500 mb-4">Select people whose schedules you want to copy from the <span class="text-indigo-400 font-medium">Default</span> roster into <span id="importTargetName" class="text-white font-medium"></span>.</p>
+    <div class="text-[10px] font-bold tracking-widest uppercase text-zinc-500 mb-2">People in Default</div>
+    <div id="importPeopleList" class="flex-1 overflow-y-auto flex flex-col gap-1 mb-4 pr-1" style="max-height:320px;"></div>
+    <div class="flex gap-2 mb-3">
+      <button onclick="importSelectAll(true)" class="flex-1 py-1.5 rounded-md text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition-colors">Select All</button>
+      <button onclick="importSelectAll(false)" class="flex-1 py-1.5 rounded-md text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition-colors">Deselect All</button>
+    </div>
+    <div class="flex gap-3 justify-end pt-3 border-t border-zinc-800">
+      <button onclick="closeImportRoutinesModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">Skip</button>
+      <button onclick="confirmImportRoutines()" class="px-5 py-2 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-colors">Import Selected</button>
+    </div>
+  </div>
+</div>
+
 <!-- Export Status Overlay -->
 <div id="exportStatus" class="fixed inset-0 z-[200] bg-zinc-950/90 backdrop-blur-sm hidden items-center justify-center flex-col gap-4">
   <div class="exp-spinner w-10 h-10 border-4 border-zinc-800 rounded-full"></div>
-  <span class="text-sm font-medium text-zinc-300 animate-pulse">Rendering 16:9 Image...</span>
+  <span class="text-sm font-medium text-zinc-300 animate-pulse">Generating PNG...</span>
 </div>
 
 <!-- Hidden Canvas for Exporting -->
@@ -163,84 +265,306 @@
 const DAYS   = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday'];
 const DSHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Sat'];
 const SLOTS  = [
-  {id:0, start:'8:00 AM', end:'9:20 AM'},
-  {id:1, start:'9:30 AM', end:'10:50 AM'},
+  {id:0, start:'8:00 AM',  end:'9:20 AM'},
+  {id:1, start:'9:30 AM',  end:'10:50 AM'},
   {id:2, start:'11:00 AM', end:'12:20 PM'},
   {id:3, start:'12:30 PM', end:'1:50 PM'},
-  {id:4, start:'2:00 PM', end:'3:20 PM'},
-  {id:5, start:'3:30 PM', end:'4:50 PM'}
+  {id:4, start:'2:00 PM',  end:'3:20 PM'},
+  {id:5, start:'3:30 PM',  end:'4:50 PM'}
 ];
+const PALETTE = ['#818cf8','#fb923c','#4ade80','#f472b6','#2dd4bf','#facc15','#c084fc','#fb7185','#22d3ee','#a3e635'];
 
-// Refined, accessible pastel palette for dark mode
-const PALETTE = ['#818cf8', '#fb923c', '#4ade80', '#f472b6', '#2dd4bf', '#facc15', '#c084fc', '#fb7185', '#22d3ee', '#a3e635'];
+// ── State ─────────────────────────────────────────────────────────
+// Global people pool: {id, name, color}
+let allPeople  = [];
+// Rosters: [{id, name, memberIds:[...], schedule:{...}, active:{...}}]
+let rosters    = [];
+let activeRosterId = null;
+let nextId     = 1;
+let palIdx     = 0;
+let modalTarget   = null;
+let editTarget    = null;
+let rosterModalMode = 'new'; // 'new' | 'rename'
 
-let people   = []; // {id, name, color, active}
-let schedule = {}; // Format: "dayIndex-slotIndex": [personId, ...]
-let nextId   = 1;
-let palIdx   = 0;
-let modalTarget = null;
+// Convenience getters
+function currentRoster() { return rosters.find(r => r.id === activeRosterId) || null; }
+function rosterPeople()  { const r = currentRoster(); if(!r) return []; return allPeople.filter(p => r.memberIds.includes(p.id)); }
+function rosterSchedule(){ const r = currentRoster(); return r ? r.schedule : {}; }
+function rosterActive()  { const r = currentRoster(); return r ? r.active : {}; }
+function visiblePeople() {
+  const active = rosterActive();
+  return new Set(rosterPeople().filter(p => active[p.id] !== false).map(p => p.id));
+}
 
-// ── Boot Sequence ──────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", async () => {
+// ── Color Helpers ─────────────────────────────────────────────────
+function hexToHsl(hex) {
+  const s2 = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+  hex = hex.replace(s2, (_,r,g,b) => r+r+g+g+b+b);
+  const res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!res) return {h:0,s:0,l:0};
+  let r=parseInt(res[1],16)/255, g=parseInt(res[2],16)/255, b=parseInt(res[3],16)/255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b);
+  let h,s,l=(mx+mn)/2;
+  if(mx===mn){h=s=0;}else{
+    const d=mx-mn; s=l>0.5?d/(2-mx-mn):d/(mx+mn);
+    switch(mx){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;}
+    h/=6;
+  }
+  return {h:h*360,s:s*100,l:l*100};
+}
+function hslToHex(h,s,l) {
+  h/=360;s/=100;l/=100;
+  let r,g,b;
+  if(s===0){r=g=b=l;}else{
+    const hue2rgb=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};
+    const q=l<0.5?l*(1+s):l+s-l*s,p=2*l-q;
+    r=hue2rgb(p,q,h+1/3);g=hue2rgb(p,q,h);b=hue2rgb(p,q,h-1/3);
+  }
+  const toHex=x=>{const hx=Math.round(x*255).toString(16);return hx.length===1?'0'+hx:hx;};
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+function getUniqueColorExcluding(excludeId) {
+  const pool = allPeople.filter(p => p.id !== excludeId);
+  if(!pool.length) return PALETTE[0];
+  const hues = pool.map(p => hexToHsl(p.color).h);
+  if(hues.length===1) return hslToHex((hues[0]+180)%360,85,65);
+  hues.sort((a,b)=>a-b);
+  let mx=0,best=0;
+  for(let i=0;i<hues.length;i++){
+    const h1=hues[i],h2=hues[(i+1)%hues.length];
+    let gap=h2-h1; if(gap<0) gap+=360;
+    if(gap>mx){mx=gap;best=(h1+gap/2)%360;}
+  }
+  return hslToHex(best,85,65);
+}
+function autoAssignNewColor() { document.getElementById('newColor').value = getUniqueColorExcluding(null); }
+function autoAssignEditColor() {
+  if(!editTarget) return;
+  document.getElementById('editColor').value = getUniqueColorExcluding(editTarget);
+}
+
+// ── Boot ──────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
   await loadState();
   renderAll();
 });
 
-// ── State Management (Auto-load JSON) ───────────────────────────────
+// ── State: Load / Save ────────────────────────────────────────────
 async function loadState() {
-  let loadedFromServer = false;
-
-  // 1. Attempt to fetch from same folder (For GitHub Pages deployment)
+  let loaded = false;
   try {
     const res = await fetch('./overlap-schedule.json', { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      applyData(data);
-      loadedFromServer = true;
-      console.log("Loaded schedule from server JSON.");
-    }
-  } catch (err) {
-    console.log("No server JSON found, checking local storage...");
-  }
-
-  // 2. Fallback to localStorage if fetch fails
-  if (!loadedFromServer) {
+    if (res.ok) { applyData(await res.json()); loaded = true; }
+  } catch(_) {}
+  if (!loaded) {
     try {
-      const raw = localStorage.getItem('overlap_v2');
+      const raw = localStorage.getItem('ridac_v1');
       if (raw) applyData(JSON.parse(raw));
-    } catch (e) { console.error("Error loading local storage", e); }
+    } catch(e) { console.error(e); }
   }
-
-  // Set initial color picker value
+  if (!rosters.length) {
+    // Create default roster
+    const rid = `r${nextId++}`;
+    rosters.push({id:rid, name:'Default', memberIds:[], schedule:{}, active:{}});
+    activeRosterId = rid;
+  }
+  // Ensure default roster always contains ALL people
+  const defaultRoster = rosters.find(r => r.name === 'Default');
+  if (defaultRoster) {
+    allPeople.forEach(p => {
+      if (!defaultRoster.memberIds.includes(p.id)) defaultRoster.memberIds.push(p.id);
+    });
+  }
   document.getElementById('newColor').value = PALETTE[palIdx % PALETTE.length];
 }
 
 function applyData(s) {
-  people   = s.people   || [];
-  schedule = s.schedule || {};
-  nextId   = s.nextId   || 1;
-  palIdx   = s.palIdx   || 0;
+  allPeople       = s.allPeople  || s.people || [];
+  rosters         = s.rosters    || [];
+  activeRosterId  = s.activeRosterId || (rosters[0]?.id ?? null);
+  nextId          = s.nextId     || 1;
+  palIdx          = s.palIdx     || 0;
+
+  // Migrate old format: single schedule/people into a default roster
+  if (!rosters.length && s.schedule) {
+    const rid = `r${nextId++}`;
+    const memberIds = allPeople.map(p => p.id);
+    const active = {};
+    allPeople.forEach(p => { active[p.id] = p.active !== false; });
+    rosters.push({id:rid, name:'Default', memberIds, schedule: s.schedule, active});
+    activeRosterId = rid;
+  }
 }
 
 function saveState() {
   try {
-    localStorage.setItem('overlap_v2', JSON.stringify({people, schedule, nextId, palIdx}));
-  } catch(e) { console.error("Could not save to local storage", e); }
+    localStorage.setItem('ridac_v1', JSON.stringify({allPeople, rosters, activeRosterId, nextId, palIdx}));
+  } catch(e) { console.error(e); }
 }
 
-// ── Rendering Engine ────────────────────────────────────────────────
+// ── Render All ────────────────────────────────────────────────────
 function renderAll() {
+  renderRosterDropdown();
   renderGrid();
   renderPeople();
+  updateImportBtn();
   saveState();
 }
 
+// ── Roster Dropdown ───────────────────────────────────────────────
+function renderRosterDropdown() {
+  const sel = document.getElementById('rosterDropdown');
+  sel.innerHTML = rosters.map(r =>
+    `<option value="${r.id}" ${r.id === activeRosterId ? 'selected' : ''}>${r.name}</option>`
+  ).join('');
+}
+
+function switchRoster(id) {
+  activeRosterId = id;
+  renderAll();
+}
+
+// ── Roster CRUD ───────────────────────────────────────────────────
+function openRosterModal(mode) {
+  rosterModalMode = mode;
+  const title = document.getElementById('rosterModalTitle');
+  const input = document.getElementById('rosterNameInput');
+  if (mode === 'rename') {
+    title.textContent = 'Rename Roster';
+    input.value = currentRoster()?.name || '';
+  } else {
+    title.textContent = 'New Roster';
+    input.value = '';
+  }
+  const m = document.getElementById('rosterModal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+  setTimeout(() => input.focus(), 50);
+}
+function closeRosterModal() {
+  const m = document.getElementById('rosterModal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+}
+function saveRosterModal() {
+  const name = document.getElementById('rosterNameInput').value.trim();
+  if (!name) return;
+  if (rosterModalMode === 'new') {
+    const rid = `r${nextId++}`;
+    // New roster: copy members from Default but start with a BLANK schedule
+    const defaultR = rosters.find(r => r.name === 'Default');
+    const memberIdsCopy = defaultR ? [...defaultR.memberIds] : allPeople.map(p => p.id);
+    const activeCopy = {};
+    memberIdsCopy.forEach(id => { activeCopy[id] = true; });
+    rosters.push({id:rid, name, memberIds: memberIdsCopy, schedule: {}, active: activeCopy});
+    activeRosterId = rid;
+    closeRosterModal();
+    renderAll();
+    // Offer to import routines from Default
+    openImportRoutinesModal();
+  } else {
+    const r = currentRoster(); if(r) r.name = name;
+    closeRosterModal();
+    renderAll();
+  }
+}
+function deleteCurrentRoster() {
+  if (rosters.length <= 1) { alert('Cannot delete the only roster.'); return; }
+  const r = currentRoster();
+  if (!r) return;
+  if (!confirm(`Delete roster "${r.name}"? The schedule will be lost but people remain in the pool.`)) return;
+  rosters = rosters.filter(x => x.id !== r.id);
+  activeRosterId = rosters[0].id;
+  renderAll();
+}
+
+// ── Import Routines Modal ─────────────────────────────────────────
+function openImportRoutinesModal() {
+  const r = currentRoster();
+  if (!r || r.name === 'Default') return;
+  const defaultR = rosters.find(x => x.name === 'Default');
+  if (!defaultR) return;
+
+  document.getElementById('importTargetName').textContent = r.name;
+
+  // List all people that are in Default roster
+  const defaultPeople = allPeople.filter(p => defaultR.memberIds.includes(p.id));
+  const list = document.getElementById('importPeopleList');
+  if (!defaultPeople.length) {
+    list.innerHTML = '<p class="text-xs text-zinc-500 italic px-1">No people in Default roster yet.</p>';
+  } else {
+    list.innerHTML = defaultPeople.map(p => {
+      // Count how many slots this person has in Default
+      const slotCount = Object.values(defaultR.schedule).filter(arr => arr.includes(p.id)).length;
+      return `<label class="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50 cursor-pointer transition-colors">
+        <input type="checkbox" data-pid="${p.id}" class="import-person-cb w-4 h-4 rounded border-zinc-600 text-indigo-500 focus:ring-indigo-500 bg-zinc-900 cursor-pointer">
+        <div class="w-3 h-3 rounded-full shrink-0" style="background:${p.color}"></div>
+        <span class="flex-1 text-sm text-zinc-200 font-medium">${p.name}</span>
+        <span class="text-[11px] text-zinc-500 font-mono">${slotCount} slot${slotCount !== 1 ? 's' : ''}</span>
+      </label>`;
+    }).join('');
+  }
+
+  // Update header Import Routines button visibility
+  updateImportBtn();
+
+  const m = document.getElementById('importRoutinesModal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+}
+function closeImportRoutinesModal() {
+  const m = document.getElementById('importRoutinesModal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+}
+function importSelectAll(val) {
+  document.querySelectorAll('.import-person-cb').forEach(cb => cb.checked = val);
+}
+function confirmImportRoutines() {
+  const r = currentRoster();
+  const defaultR = rosters.find(x => x.name === 'Default');
+  if (!r || !defaultR) { closeImportRoutinesModal(); return; }
+
+  const selected = new Set(
+    [...document.querySelectorAll('.import-person-cb:checked')].map(cb => cb.dataset.pid)
+  );
+  if (!selected.size) { closeImportRoutinesModal(); return; }
+
+  // For each slot key in Default, copy assignments of selected people into current roster
+  Object.entries(defaultR.schedule).forEach(([key, ids]) => {
+    const toAdd = ids.filter(id => selected.has(id) && r.memberIds.includes(id));
+    if (!toAdd.length) return;
+    if (!r.schedule[key]) r.schedule[key] = [];
+    toAdd.forEach(id => { if (!r.schedule[key].includes(id)) r.schedule[key].push(id); });
+  });
+
+  closeImportRoutinesModal();
+  renderAll();
+}
+function updateImportBtn() {
+  const r = currentRoster();
+  const btn = document.getElementById('importRoutinesBtn');
+  if (!btn) return;
+  // Only show on non-Default rosters
+  if (r && r.name !== 'Default') {
+    btn.classList.remove('hidden');
+    btn.classList.add('md:flex');
+  } else {
+    btn.classList.add('hidden');
+    btn.classList.remove('md:flex');
+  }
+}
+document.getElementById('importRoutinesModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('importRoutinesModal')) closeImportRoutinesModal();
+});
+
+document.getElementById('rosterModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('rosterModal')) closeRosterModal();
+});
+
+// ── Grid Rendering ────────────────────────────────────────────────
 function renderGrid() {
   const head = document.getElementById('gridHead');
   const body = document.getElementById('gridBody');
   const vis  = visiblePeople();
+  const sched = rosterSchedule();
 
-  // Render Header
   head.innerHTML = `<tr>
     <th class="sticky-col bg-zinc-900 border-r border-zinc-800 p-2 text-center w-[90px] min-w-[90px] sm:w-[120px] sm:min-w-[120px] font-mono text-[10px] sm:text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
       Time
@@ -248,7 +572,6 @@ function renderGrid() {
     ${DSHORT.map((d,i) => `<th class="border-l border-zinc-800 p-2 sm:p-3 text-center text-[11px] sm:text-xs font-semibold text-zinc-400 uppercase tracking-wider" title="${DAYS[i]}">${d}</th>`).join('')}
   </tr>`;
 
-  // Render Body
   body.innerHTML = SLOTS.map((slot, si) => `
     <tr class="border-b border-zinc-800 last:border-b-0">
       <td class="sticky-col bg-zinc-900 border-r border-zinc-800 p-2 align-middle select-none">
@@ -260,118 +583,138 @@ function renderGrid() {
       </td>
       ${DAYS.map((_, di) => {
         const key = `${di}-${si}`;
-        const occ = (schedule[key] || []).filter(id => vis.has(id));
-        
+        const occ = (sched[key] || []).filter(id => vis.has(id));
         const chips = occ.map(id => {
-          const p = people.find(x => x.id === id);
-          if(!p) return '';
-          return `<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap shadow-sm" style="background:${p.color}25; color:${p.color}; border: 1px solid ${p.color}40;">
-            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${p.color}"></span>
+          const p = allPeople.find(x => x.id === id);
+          if (!p) return '';
+          // Desktop: full-width (vertical), mobile: auto
+          return `<span class="name-chip inline-flex items-center justify-center px-2 py-1 rounded-md text-[11px] font-semibold shadow-sm" style="background:${p.color}25; color:${p.color}; border:1px solid ${p.color}40;">
             <span class="truncate max-w-[80px] sm:max-w-none">${p.name}</span>
           </span>`;
         }).join('');
-        
-        return `<td class="td-cell bg-zinc-950 border-l border-zinc-800 p-2 align-top min-h-[60px] cursor-pointer relative" data-di="${di}" data-si="${si}">
-          <div class="flex flex-wrap gap-1.5 content-start">${chips}</div>
+        return `<td class="td-cell bg-zinc-950 border-l border-zinc-800 p-1.5 align-top cursor-pointer relative" data-di="${di}" data-si="${si}">
+          <div class="name-chips-container">${chips}</div>
         </td>`;
       }).join('')}
     </tr>
   `).join('');
 
-  // Re-bind Interaction Events
   document.querySelectorAll('td.td-cell').forEach(td => {
     const di = +td.dataset.di, si = +td.dataset.si;
     td.addEventListener('click', () => openModal(di, si));
     td.addEventListener('mouseenter', e => showTip(e, di, si));
-    td.addEventListener('mousemove', e => moveTip(e));
+    td.addEventListener('mousemove',  e => moveTip(e));
     td.addEventListener('mouseleave', hideTip);
   });
 }
 
+// ── People Panel Rendering ────────────────────────────────────────
 function renderPeople() {
   const el = document.getElementById('peopleList');
-  if (!people.length) { 
-    el.innerHTML = '<p class="text-xs text-zinc-500 italic px-1">No people added yet.</p>'; 
-    return; 
+  const query = (document.getElementById('searchPeople')?.value || '').trim().toLowerCase();
+  const rp = rosterPeople();
+  const filtered = query ? rp.filter(p => p.name.toLowerCase().includes(query)) : rp;
+  const active = rosterActive();
+
+  if (!rp.length) {
+    el.innerHTML = '<p class="text-xs text-zinc-500 italic px-1">No people in this roster yet.</p>';
+    return;
   }
-  
-  el.innerHTML = people.map(p => `
+  if (!filtered.length) {
+    el.innerHTML = '<p class="text-xs text-zinc-500 italic px-1">No results found.</p>';
+    return;
+  }
+
+  el.innerHTML = filtered.map(p => `
     <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50 transition-colors group">
-      <button onclick="togglePerson('${p.id}')" class="w-5 h-5 rounded flex items-center justify-center border transition-all ${p.active ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-transparent border-zinc-600 text-transparent'}">
+      <button onclick="togglePerson('${p.id}')" class="w-5 h-5 rounded flex items-center justify-center border transition-all ${active[p.id] !== false ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-transparent border-zinc-600 text-transparent'}" title="Toggle visibility">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
       </button>
       <div class="w-3 h-3 rounded-full shrink-0 shadow-sm" style="background:${p.color}"></div>
-      <span class="flex-1 text-sm text-zinc-200 truncate font-medium" title="${p.name}">${p.name}</span>
-      <button onclick="removePerson('${p.id}')" class="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-red-400 transition-all rounded">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+      <span class="flex-1 text-sm text-zinc-200 truncate font-medium cursor-pointer hover:text-white" onclick="openEditModal('${p.id}')" title="Click to edit">${p.name}</span>
+      <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+        <button onclick="openEditModal('${p.id}')" class="p-1 text-zinc-500 hover:text-indigo-400 transition-all rounded" title="Edit person">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/></svg>
+        </button>
+        <button onclick="removePerson('${p.id}')" class="p-1 text-zinc-500 hover:text-red-400 transition-all rounded" title="Remove from roster">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
     </div>
   `).join('');
 }
 
-// ── Panel Management ────────────────────────────────────────────────
+// ── Panel Management ──────────────────────────────────────────────
 function togglePanel() {
   const panel = document.getElementById('panel');
   const overlay = document.getElementById('panelOverlay');
-  const isOpen = !panel.classList.contains('-translate-x-full');
-  
-  if (isOpen) { closePanel(); } 
-  else {
-    panel.classList.remove('-translate-x-full');
-    overlay.classList.remove('opacity-0', 'pointer-events-none');
-  }
+  if (!panel.classList.contains('-translate-x-full')) { closePanel(); return; }
+  panel.classList.remove('-translate-x-full');
+  overlay.classList.remove('opacity-0', 'pointer-events-none');
 }
-
 function closePanel() {
   document.getElementById('panel').classList.add('-translate-x-full');
   document.getElementById('panelOverlay').classList.add('opacity-0', 'pointer-events-none');
 }
 
-// ── Person Operations ───────────────────────────────────────────────
+// ── Person CRUD ───────────────────────────────────────────────────
 function addPerson() {
   const nameEl  = document.getElementById('newName');
   const colorEl = document.getElementById('newColor');
   const name = nameEl.value.trim();
-  
   if (!name) { nameEl.focus(); return; }
-  
-  people.push({id:`p${nextId++}`, name, color:colorEl.value, active:true});
+
+  const id = `p${nextId++}`;
+  allPeople.push({id, name, color: colorEl.value});
+  // Add to default roster
+  const defaultRoster = rosters.find(r => r.name === 'Default');
+  if (defaultRoster && !defaultRoster.memberIds.includes(id)) defaultRoster.memberIds.push(id);
+  // Add to currently active roster as well
+  const r = currentRoster();
+  if (r && !r.memberIds.includes(id)) r.memberIds.push(id);
+
   nameEl.value = '';
   colorEl.value = PALETTE[palIdx++ % PALETTE.length];
   renderAll();
 }
 
 function removePerson(id) {
-  if(!confirm("Remove this person?")) return;
-  people = people.filter(p => p.id !== id);
-  Object.keys(schedule).forEach(k => {
-    schedule[k] = schedule[k].filter(x => x !== id);
-    if(!schedule[k].length) delete schedule[k];
-  });
+  if (!confirm('Remove this person from roster?')) return;
+  const r = currentRoster();
+  if (r) {
+    r.memberIds = r.memberIds.filter(x => x !== id);
+    Object.keys(r.schedule).forEach(k => {
+      r.schedule[k] = r.schedule[k].filter(x => x !== id);
+      if (!r.schedule[k].length) delete r.schedule[k];
+    });
+    delete r.active[id];
+  }
   renderAll();
 }
 
 function togglePerson(id) {
-  const p = people.find(x => x.id === id);
-  if(p) p.active = !p.active;
+  const r = currentRoster(); if (!r) return;
+  r.active[id] = r.active[id] === false ? true : false;
   renderAll();
 }
 
-// ── Modal Handling ──────────────────────────────────────────────────
+// ── Slot Assignment Modal ─────────────────────────────────────────
 function openModal(di, si) {
   hideTip();
   modalTarget = {di, si};
   const key = `${di}-${si}`;
-  const asgn = schedule[key] || [];
-  
+  const r = currentRoster();
+  const asgn = r?.schedule[key] || [];
+
   document.getElementById('mTitle').textContent = DAYS[di];
   document.getElementById('mSub').textContent = `${SLOTS[si].start} – ${SLOTS[si].end}`;
-  
+
   const list = document.getElementById('mList');
-  if (!people.length) {
+  const rp = rosterPeople();
+  if (!rp.length) {
     list.innerHTML = '<p class="text-sm text-zinc-500 italic p-2">Add people in the management panel first.</p>';
   } else {
-    list.innerHTML = people.map(p => `
+    list.innerHTML = rp.map(p => `
       <label class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-zinc-800/60 cursor-pointer transition-colors group">
         <input type="checkbox" id="mc_${p.id}" class="w-4 h-4 rounded border-zinc-600 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-zinc-900 bg-zinc-900 cursor-pointer" ${asgn.includes(p.id) ? 'checked' : ''}>
         <div class="w-3 h-3 rounded-full shrink-0" style="background:${p.color}"></div>
@@ -379,208 +722,241 @@ function openModal(di, si) {
       </label>
     `).join('');
   }
-  
-  const modal = document.getElementById('modal');
-  modal.classList.remove('hidden');
-  modal.classList.add('flex');
-}
 
-function closeModal() {
   const modal = document.getElementById('modal');
-  modal.classList.add('hidden');
-  modal.classList.remove('flex');
+  modal.classList.remove('hidden'); modal.classList.add('flex');
+}
+function closeModal() {
+  const m = document.getElementById('modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
   modalTarget = null;
 }
-
 function saveModal() {
-  if(!modalTarget) return;
+  if (!modalTarget) return;
   const {di, si} = modalTarget;
   const key = `${di}-${si}`;
+  const r = currentRoster(); if (!r) return;
   const checked = [...document.querySelectorAll('#mList input[type="checkbox"]:checked')].map(el => el.id.replace('mc_',''));
-  
-  if(checked.length) schedule[key] = checked;
-  else delete schedule[key];
-  
+  if (checked.length) r.schedule[key] = checked;
+  else delete r.schedule[key];
   closeModal();
   renderAll();
 }
-
-function visiblePeople() {
-  return new Set(people.filter(p => p.active).map(p => p.id));
-}
-
-// Close modal on outside click
 document.getElementById('modal').addEventListener('click', e => {
   if (e.target === document.getElementById('modal')) closeModal();
 });
 
-// ── Tooltip Engine ──────────────────────────────────────────────────
-function showTip(e, di, si) {
-  // Disable tooltip on touch devices for better UX
-  if(window.matchMedia("(pointer: coarse)").matches) return; 
+// ── Edit Person Modal ─────────────────────────────────────────────
+function openEditModal(id) {
+  const p = allPeople.find(x => x.id === id);
+  if (!p) return;
+  editTarget = id;
 
+  document.getElementById('editName').value  = p.name;
+  document.getElementById('editColor').value = p.color;
+
+  // Show roster membership checkboxes
+  const rList = document.getElementById('editRosterList');
+  rList.innerHTML = rosters.map(r => `
+    <label class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-zinc-800/50 cursor-pointer">
+      <input type="checkbox" data-roster="${r.id}" class="w-3.5 h-3.5 rounded border-zinc-600 text-indigo-500 bg-zinc-900 cursor-pointer"
+        ${r.memberIds.includes(id) ? 'checked' : ''}>
+      <span class="text-xs text-zinc-300">${r.name}</span>
+    </label>
+  `).join('');
+
+  const modal = document.getElementById('editModal');
+  modal.classList.remove('hidden'); modal.classList.add('flex');
+}
+function closeEditModal() {
+  const m = document.getElementById('editModal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+  editTarget = null;
+}
+function saveEditModal() {
+  if (!editTarget) return;
+  const name = document.getElementById('editName').value.trim();
+  if (!name) { document.getElementById('editName').focus(); return; }
+
+  const p = allPeople.find(x => x.id === editTarget);
+  if (p) { p.name = name; p.color = document.getElementById('editColor').value; }
+
+  // Update roster memberships
+  document.querySelectorAll('#editRosterList input[type="checkbox"]').forEach(cb => {
+    const rid = cb.dataset.roster;
+    const r = rosters.find(x => x.id === rid);
+    if (!r) return;
+    if (cb.checked && !r.memberIds.includes(editTarget)) r.memberIds.push(editTarget);
+    if (!cb.checked) {
+      r.memberIds = r.memberIds.filter(x => x !== editTarget);
+      Object.keys(r.schedule).forEach(k => {
+        r.schedule[k] = r.schedule[k].filter(x => x !== editTarget);
+        if (!r.schedule[k].length) delete r.schedule[k];
+      });
+      delete r.active[editTarget];
+    }
+  });
+
+  closeEditModal();
+  renderAll();
+}
+document.getElementById('editModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('editModal')) closeEditModal();
+});
+
+// ── Tooltip Engine ────────────────────────────────────────────────
+function showTip(e, di, si) {
+  if (window.matchMedia('(pointer: coarse)').matches) return;
   const key = `${di}-${si}`;
-  const vis = people.filter(p => p.active);
-  const visIds = new Set(vis.map(p => p.id));
-  
-  const occ = (schedule[key] || []).filter(id => visIds.has(id));
-  const free = vis.filter(p => !occ.includes(p.id));
-  
-  const renderItem = p => `<div class="flex items-center gap-2 py-0.5"><div class="w-2 h-2 rounded-full shadow-sm shrink-0" style="background:${p.color}"></div><span class="text-xs text-zinc-200 truncate">${p.name}</span></div>`;
+  const sched = rosterSchedule();
+  const rp = rosterPeople();
+  const vis = visiblePeople();
+  const occ  = (sched[key] || []).filter(id => vis.has(id));
+  const free = rp.filter(p => vis.has(p.id) && !occ.includes(p.id));
+  const renderItem = p => `<div class="flex items-center gap-2 py-0.5"><div class="w-2 h-2 rounded-full shrink-0" style="background:${p.color}"></div><span class="text-xs text-zinc-200 truncate">${p.name}</span></div>`;
   const tip = document.getElementById('tip');
-  
   tip.innerHTML = `
     <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-700 pb-2 mb-2">${DSHORT[di]} · ${SLOTS[si].start} – ${SLOTS[si].end}</div>
     <div class="mb-3">
-      <div class="text-[10px] font-bold text-red-400 uppercase mb-1 flex items-center gap-1">🔴 Occupied</div>
-      <div class="flex flex-col gap-0.5">${occ.length ? occ.map(id => renderItem(people.find(x => x.id === id))).join('') : '<span class="text-xs text-zinc-500 italic">Nobody</span>'}</div>
+      <div class="text-[10px] font-bold text-red-400 uppercase mb-1">🔴 Occupied</div>
+      <div class="flex flex-col gap-0.5">${occ.length ? occ.map(id => renderItem(allPeople.find(x=>x.id===id))).join('') : '<span class="text-xs text-zinc-500 italic">Nobody</span>'}</div>
     </div>
     <div>
-      <div class="text-[10px] font-bold text-green-400 uppercase mb-1 flex items-center gap-1">🟢 Available</div>
+      <div class="text-[10px] font-bold text-green-400 uppercase mb-1">🟢 Available</div>
       <div class="flex flex-col gap-0.5">${free.length ? free.map(renderItem).join('') : '<span class="text-xs text-zinc-500 italic">Nobody</span>'}</div>
     </div>`;
-  
   moveTip(e);
   tip.classList.remove('hidden', 'opacity-0', 'scale-95');
 }
-
 function moveTip(e) {
-  const t = document.getElementById('tip');
-  const m = 16; // margin
+  const t = document.getElementById('tip'), m = 16;
   let x = e.clientX + m, y = e.clientY + m;
-  
-  // Viewport bounds checking
-  if (x + 240 > window.innerWidth) x = e.clientX - 240 - m;
+  if (x + 240 > window.innerWidth)  x = e.clientX - 240 - m;
   if (y + t.offsetHeight > window.innerHeight) y = e.clientY - t.offsetHeight - m;
-  
-  t.style.left = `${x}px`; 
-  t.style.top = `${y}px`;
+  t.style.left = `${x}px`; t.style.top = `${y}px`;
 }
-
-function hideTip() { 
+function hideTip() {
   document.getElementById('tip').classList.add('opacity-0', 'scale-95');
   setTimeout(() => document.getElementById('tip').classList.add('hidden'), 150);
 }
 
-// ── Data Export / Import ─────────────────────────────────────────────
+// ── Data Export / Import ──────────────────────────────────────────
 function exportJSON() {
-  const data = JSON.stringify({people, schedule, nextId, palIdx}, null, 2);
-  const blob = new Blob([data], {type: 'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'overlap-schedule.json';
+  const data = JSON.stringify({allPeople, rosters, activeRosterId, nextId, palIdx}, null, 2);
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([data], {type:'application/json'})),
+    download: 'ridac-schedule.json'
+  });
   a.click();
 }
-
 function importJSON(e) {
-  const file = e.target.files[0];
-  if(!file) return;
+  const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
     try {
       applyData(JSON.parse(ev.target.result));
       document.getElementById('newColor').value = PALETTE[palIdx % PALETTE.length];
       renderAll();
-    } catch(err) { alert('Invalid JSON file.'); }
+    } catch(_) { alert('Invalid JSON file.'); }
   };
   reader.readAsText(file);
   e.target.value = '';
 }
 
-// ── High-Fidelity 16:9 Image Export Engine ───────────────────────────
+// ── PNG Export ────────────────────────────────────────────────────
 async function exportPNG() {
-  hideTip();
-  closePanel();
+  hideTip(); closePanel();
   const statusEl = document.getElementById('exportStatus');
-  statusEl.classList.remove('hidden');
-  statusEl.classList.add('flex');
-
-  // Let UI settle
+  statusEl.classList.remove('hidden'); statusEl.classList.add('flex');
   await new Promise(r => setTimeout(r, 200));
 
-  const EW = 1920, EH = 1080;
-  // Calculate strict grid dimensions to fit inside 16:9 box nicely
-  const timeW = 120; 
-  const headerH = 60;
-  const colW = Math.floor((EW - timeW) / 6); 
-  const rowH = Math.floor((EH - headerH) / 6);
+  // Export canvas dimensions — use padding inside so table fills exactly EW
+  const PAD = 32;
+  const EW = 1200;
+  const tableW = EW - PAD * 2; // actual table width after padding
+  const timeW = 110;
+  const dayColW = Math.floor((tableW - timeW) / 6);
+  // Assign remaining pixels to the last (Saturday) column so total == tableW
+  const lastColW = tableW - timeW - dayColW * 5;
 
   const ec = document.getElementById('exportCanvas');
-  
-  // Style the wrapper to guarantee rendering bounds
-  ec.style.cssText = `
-    position: fixed; left: -9999px; top: 0;
-    width: ${EW}px; height: ${EH}px;
-    background-color: #09090b; 
-    font-family: 'Inter', sans-serif;
-  `;
+  ec.style.cssText = `position:fixed;left:-9999px;top:0;width:${EW}px;background:#09090b;font-family:'Inter',sans-serif;padding:${PAD}px;box-sizing:border-box;`;
+
+  const sched = rosterSchedule();
+  const vis = visiblePeople();
+  const r = currentRoster();
 
   let rows = '';
-  for(let si=0; si<6; si++) {
-    // Time Slot cell (with dynamic stacked look matching standard style)
-    let cells = `<td style="width:${timeW}px; height:${rowH}px; background:#18181b; border:1px solid #27272a; padding:0 12px; vertical-align:middle; text-align:center; box-sizing:border-box;">
-      <div style="font-family:'DM Mono',monospace; font-size:15px; color:#f4f4f5; font-weight:500; line-height:1.4;">
-        <div>${SLOTS[si].start}</div>
-        <div style="color:#71717a; margin:2px 0;">–</div>
-        <div>${SLOTS[si].end}</div>
-      </div>
-    </td>`;
-
-    // Day Cells
-    for(let di=0; di<6; di++) {
+  for (let si = 0; si < 6; si++) {
+    let cells = `<td style="width:${timeW}px;background:#18181b;border:1px solid #27272a;padding:16px 12px;vertical-align:middle;text-align:center;box-sizing:border-box;">
+      <div style="font-family:'DM Mono',monospace;font-size:14px;color:#f4f4f5;font-weight:500;line-height:1.5;">
+        <div>${SLOTS[si].start}</div><div style="color:#71717a;margin:2px 0;">–</div><div>${SLOTS[si].end}</div>
+      </div></td>`;
+    for (let di = 0; di < 6; di++) {
       const key = `${di}-${si}`;
-      const occ = (schedule[key] || []).filter(id => visiblePeople().has(id));
-      
+      const occ = (sched[key] || []).filter(id => vis.has(id));
       const badges = occ.map(id => {
-        const p = people.find(x => x.id === id);
-        if(!p) return '';
-        return `<span style="display:inline-flex; align-items:center; gap:8px; padding:6px 14px; border-radius:8px; font-size:16px; font-weight:600; white-space:nowrap; background:${p.color}25; color:${p.color}; border:1px solid ${p.color}40; margin:4px;">
-          <span style="width:10px; height:10px; border-radius:50%; background:${p.color}; display:inline-block; flex-shrink:0;"></span>
-          ${p.name}
-        </span>`;
+        const p = allPeople.find(x => x.id === id); if (!p) return '';
+        // No extra margin/line-height that would add phantom space above text
+        return `<div style="display:flex;align-items:center;justify-content:center;padding:5px 8px;border-radius:7px;font-size:13px;font-weight:600;line-height:1;text-align:center;background:${p.color}25;color:${p.color};border:1px solid ${p.color}40;box-sizing:border-box;width:100%;">${p.name}</div>`;
       }).join('');
-      
-      cells += `<td style="width:${colW}px; height:${rowH}px; background:#09090b; border:1px solid #27272a; vertical-align:top; padding:12px; box-sizing:border-box;">
-        <div style="display:flex; flex-wrap:wrap; align-content:flex-start;">${badges}</div>
-      </td>`;
+      const width = (di === 5) ? lastColW : dayColW;
+      cells += `<td style="width:${width}px;background:#09090b;border:1px solid #27272a;vertical-align:top;padding:10px 8px;box-sizing:border-box;">
+        <div style="display:flex;flex-direction:column;gap:5px;">${badges}</div></td>`;
     }
     rows += `<tr>${cells}</tr>`;
   }
 
-  // Header Row
-  const headCells = `<th style="width:${timeW}px; height:${headerH}px; background:#18181b; border:1px solid #27272a; padding:0 24px; font-size:14px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#71717a; text-align:center; font-family:'DM Mono',monospace; box-sizing:border-box;">Time</th>`
-    + DAYS.map(d => `<th style="width:${colW}px; height:${headerH}px; background:#18181b; border:1px solid #27272a; font-size:16px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#71717a; text-align:center; box-sizing:border-box;">${d}</th>`).join('');
+  const headCells = `<th style="width:${timeW}px;background:#18181b;border:1px solid #27272a;padding:14px 12px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#71717a;text-align:center;font-family:'DM Mono',monospace;box-sizing:border-box;">Time</th>`
+    + DAYS.map((d,di) => { const w = (di===5)?lastColW:dayColW; return `<th style="width:${w}px;background:#18181b;border:1px solid #27272a;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#71717a;text-align:center;padding:14px 12px;box-sizing:border-box;">${d}</th>`; }).join('');
 
+  const rosterName = r?.name || 'Schedule';
   ec.innerHTML = `
-    <table style="border-collapse:collapse; width:${EW}px; height:${EH}px; table-layout:fixed;">
+    <div style="margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end;">
+      <div>
+        <span style="font-family:'Inter',sans-serif;font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.5px;">
+          Rid<span style="color:#818cf8;">ac</span> <span style="font-weight:400;color:#a1a1aa;font-size:18px;">— ${rosterName}</span>
+        </span>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:12px;color:#71717a;">${new Date().toLocaleDateString()}</div>
+    </div>
+    <table style="border-collapse:collapse;width:100%;table-layout:fixed;">
       <thead><tr>${headCells}</tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 
+  await new Promise(r => setTimeout(r, 150));
+  const EH = ec.scrollHeight || ec.offsetHeight || 800;
+
   try {
     const canvas = await html2canvas(ec, {
-      width: EW, height: EH,
-      scale: 1, // 1:1 pixel mapping for 1080p
-      useCORS: true,
-      backgroundColor: '#09090b',
-      logging: false,
-      onclone: (doc) => {
-        // Ensure webfonts are loaded in clone
-        doc.fonts.ready.then(() => {}); 
-      }
+      width: EW, height: EH, scale: 2,
+      useCORS: true, backgroundColor: '#09090b', logging: false,
+      windowWidth: EW, windowHeight: EH
     });
-    
-    const link = document.createElement('a');
-    link.download = 'overlap-schedule-16x9.png';
-    link.href = canvas.toDataURL('image/png', 1.0);
-    link.click();
+
+    // Use canvas.toBlob for a proper binary PNG download
+    canvas.toBlob(blob => {
+      if (!blob) { alert('Export failed.'); return; }
+      const url = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement('a'), {
+        href: url,
+        download: `ridac-${rosterName.toLowerCase().replace(/\s+/g,'-')}.png`
+      });
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    }, 'image/png');
+
   } catch(err) {
     alert('Export failed. Please try again.');
     console.error(err);
   } finally {
-    ec.innerHTML = '';
-    statusEl.classList.add('hidden');
-    statusEl.classList.remove('flex');
+    setTimeout(() => {
+      ec.innerHTML = '';
+      statusEl.classList.add('hidden');
+      statusEl.classList.remove('flex');
+    }, 1200);
   }
 }
 </script>
